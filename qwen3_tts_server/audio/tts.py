@@ -201,6 +201,16 @@ class TTSEngine:
             if ref_audio is not None and self._model_family in ("qwen3_tts", "chatterbox"):
                 gen_kwargs["ref_audio"] = ref_audio
 
+            # Check if voice cloning model has required reference audio
+            if (
+                self._model_family in ("qwen3_tts", "chatterbox")
+                and ref_audio is None
+            ):
+                raise RuntimeError(
+                    "Voice cloning model requires reference audio. "
+                    "Provide ref_audio in request or start server with --default-ref-audio"
+                )
+
             for result in self.model.generate(**gen_kwargs):
                 audio_data = result.audio
                 if hasattr(result, "sample_rate"):
@@ -217,7 +227,10 @@ class TTSEngine:
                 audio_chunks.append(audio_np)
 
             if not audio_chunks:
-                raise RuntimeError("No audio generated")
+                raise RuntimeError(
+                    "No audio generated. This may be due to model load failure "
+                    "or incompatible input parameters."
+                )
 
             # Concatenate all chunks
             full_audio = (

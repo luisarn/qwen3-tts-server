@@ -156,11 +156,24 @@ async def create_speech(
             logger.debug(f"Using default reference audio: {ref_audio_path}")
 
         try:
+            # Check if voice cloning model needs reference audio
+            if (
+                "qwen3" in model_name.lower()
+                and "tts" in model_name.lower()
+                and ref_audio_path is None
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Qwen3-TTS requires reference audio. Provide ref_audio file or configure --default-ref-audio",
+                )
+
             # Generate speech with optional voice cloning
             audio = engine.generate(
                 input, voice=voice, speed=speed, ref_audio=ref_audio_path
             )
             audio_bytes = engine.to_bytes(audio, format=response_format)
+        except HTTPException:
+            raise
         finally:
             # Clean up temp file only if we created one
             if temp_file_created and ref_audio_path and os.path.exists(ref_audio_path):
