@@ -19,6 +19,27 @@ A stripped-down TTS server focused on **Qwen3-TTS voice cloning** using Apple's 
 
 ## Installation
 
+### Using uv (Recommended)
+
+This project uses [uv](https://docs.astral.sh/uv/) for fast, reliable Python package management.
+
+```bash
+# Clone the repository
+git clone https://github.com/vllm-mlx/qwen3-tts-server.git
+cd qwen3-tts-server
+
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Sync dependencies and create virtual environment
+uv sync
+
+# Or with development dependencies (tests, linting)
+uv sync --extra dev
+```
+
+### Using pip
+
 ```bash
 # Install from source
 pip install -e .
@@ -33,13 +54,19 @@ pip install git+https://github.com/vllm-mlx/qwen3-tts-server.git
 
 ```bash
 # Basic usage (downloads Qwen3-TTS on first run)
-qwen3-tts-server serve --port 8000
+uv run -m qwen3_tts_server.server --port 8000
 
 # With default reference audio for voice cloning
-qwen3-tts-server serve --port 8000 --default-ref-audio /path/to/voice.wav
+uv run -m qwen3_tts_server.server --port 8000 --default-ref-audio /path/to/voice.wav
 
 # With API key authentication
-qwen3-tts-server serve --port 8000 --api-key your-secret-key
+uv run -m qwen3_tts_server.server --port 8000 --api-key your-secret-key
+```
+
+Or if installed with pip:
+
+```bash
+qwen3-tts-server serve --port 8000
 ```
 
 ### Generate Speech
@@ -136,10 +163,31 @@ qwen3-tts-server/
     └── test_audio.py       # TTS tests
 ```
 
+## Development
+
+Common `uv` commands:
+
+```bash
+# Run tests
+uv run --extra dev pytest
+
+# Run linting
+uv run --extra dev ruff check .
+uv run --extra dev black --check .
+
+# Format code
+uv run --extra dev black .
+uv run --extra dev ruff check --fix .
+
+# Update dependencies
+uv lock --upgrade
+```
+
 ## Dependencies
 
 - `fastapi>=0.100.0` - Web framework
 - `uvicorn>=0.23.0` - ASGI server
+- `python-multipart>=0.0.6` - Form data parsing
 - `numpy>=1.24.0` - Numerical computing
 - `mlx-audio>=0.2.9` - TTS models (via mlx-audio)
 - `soundfile>=0.12.0` - Audio I/O
