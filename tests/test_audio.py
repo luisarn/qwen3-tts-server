@@ -1,52 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """
-Tests for audio support (STT, TTS, audio processing).
+Tests for TTS support.
 
 Note: Some tests require mlx-audio to be installed.
 """
 
-import pytest
 import numpy as np
-
-
-class TestSTTEngine:
-    """Tests for Speech-to-Text engine."""
-
-    def test_init_whisper(self):
-        """Test STT engine initialization with Whisper."""
-        from vllm_mlx.audio.stt import STTEngine
-
-        engine = STTEngine("mlx-community/whisper-large-v3-mlx")
-        assert engine.model_name == "mlx-community/whisper-large-v3-mlx"
-        assert engine._is_parakeet is False
-        assert engine._loaded is False
-
-    def test_init_parakeet(self):
-        """Test STT engine initialization with Parakeet."""
-        from vllm_mlx.audio.stt import STTEngine
-
-        engine = STTEngine("mlx-community/parakeet-tdt-0.6b-v2")
-        assert engine._is_parakeet is True
-
-    def test_default_models(self):
-        """Test default model constants."""
-        from vllm_mlx.audio.stt import DEFAULT_WHISPER_MODEL, DEFAULT_PARAKEET_MODEL
-
-        assert "whisper" in DEFAULT_WHISPER_MODEL.lower()
-        assert "parakeet" in DEFAULT_PARAKEET_MODEL.lower()
-
-    def test_transcription_result(self):
-        """Test TranscriptionResult dataclass."""
-        from vllm_mlx.audio.stt import TranscriptionResult
-
-        result = TranscriptionResult(
-            text="Hello world",
-            language="en",
-            duration=2.5,
-        )
-        assert result.text == "Hello world"
-        assert result.language == "en"
-        assert result.duration == 2.5
+import pytest
 
 
 class TestTTSEngine:
@@ -54,7 +14,7 @@ class TestTTSEngine:
 
     def test_init_kokoro(self):
         """Test TTS engine initialization with Kokoro."""
-        from vllm_mlx.audio.tts import TTSEngine
+        from qwen3_tts_server.audio.tts import TTSEngine
 
         engine = TTSEngine("mlx-community/Kokoro-82M-bf16")
         assert engine.model_name == "mlx-community/Kokoro-82M-bf16"
@@ -63,28 +23,35 @@ class TestTTSEngine:
 
     def test_init_chatterbox(self):
         """Test TTS engine initialization with Chatterbox."""
-        from vllm_mlx.audio.tts import TTSEngine
+        from qwen3_tts_server.audio.tts import TTSEngine
 
         engine = TTSEngine("mlx-community/chatterbox-turbo-fp16")
         assert engine._model_family == "chatterbox"
 
     def test_init_vibevoice(self):
         """Test TTS engine initialization with VibeVoice."""
-        from vllm_mlx.audio.tts import TTSEngine
+        from qwen3_tts_server.audio.tts import TTSEngine
 
         engine = TTSEngine("mlx-community/VibeVoice-Realtime-0.5B-4bit")
         assert engine._model_family == "vibevoice"
 
     def test_init_voxcpm(self):
         """Test TTS engine initialization with VoxCPM."""
-        from vllm_mlx.audio.tts import TTSEngine
+        from qwen3_tts_server.audio.tts import TTSEngine
 
         engine = TTSEngine("mlx-community/VoxCPM1.5")
         assert engine._model_family == "voxcpm"
 
+    def test_init_qwen3_tts(self):
+        """Test TTS engine initialization with Qwen3-TTS."""
+        from qwen3_tts_server.audio.tts import TTSEngine
+
+        engine = TTSEngine("mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16")
+        assert engine._model_family == "qwen3_tts"
+
     def test_available_voices(self):
         """Test voice lists."""
-        from vllm_mlx.audio.tts import KOKORO_VOICES, CHATTERBOX_VOICES
+        from qwen3_tts_server.audio.tts import CHATTERBOX_VOICES, KOKORO_VOICES
 
         assert "af_heart" in KOKORO_VOICES
         assert len(KOKORO_VOICES) > 5
@@ -92,15 +59,19 @@ class TestTTSEngine:
 
     def test_get_voices(self):
         """Test get_voices method."""
-        from vllm_mlx.audio.tts import TTSEngine
+        from qwen3_tts_server.audio.tts import TTSEngine
 
         kokoro = TTSEngine("mlx-community/Kokoro-82M-bf16")
         voices = kokoro.get_voices()
         assert "af_heart" in voices
 
+        qwen3 = TTSEngine("mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16")
+        qwen3_voices = qwen3.get_voices()
+        assert "voice_clone" in qwen3_voices
+
     def test_audio_output(self):
         """Test AudioOutput dataclass."""
-        from vllm_mlx.audio.tts import AudioOutput
+        from qwen3_tts_server.audio.tts import AudioOutput
 
         audio = np.zeros(24000, dtype=np.float32)
         output = AudioOutput(
@@ -113,162 +84,88 @@ class TestTTSEngine:
         assert len(output.audio) == 24000
 
 
-class TestAudioProcessor:
-    """Tests for audio processor (SAM-Audio)."""
-
-    def test_init(self):
-        """Test audio processor initialization."""
-        from vllm_mlx.audio.processor import AudioProcessor
-
-        processor = AudioProcessor("mlx-community/sam-audio-large-fp16")
-        assert processor.model_name == "mlx-community/sam-audio-large-fp16"
-        assert processor._loaded is False
-
-    def test_default_model(self):
-        """Test default SAM-Audio model."""
-        from vllm_mlx.audio.processor import DEFAULT_SAM_MODEL
-
-        assert "sam-audio" in DEFAULT_SAM_MODEL.lower()
-
-    def test_separation_result(self):
-        """Test SeparationResult dataclass."""
-        from vllm_mlx.audio.processor import SeparationResult
-
-        target = np.zeros(44100, dtype=np.float32)
-        residual = np.zeros(44100, dtype=np.float32)
-
-        result = SeparationResult(
-            target=target,
-            residual=residual,
-            sample_rate=44100,
-            peak_memory=1.5,
-        )
-        assert result.sample_rate == 44100
-        assert result.peak_memory == 1.5
-        assert len(result.target) == 44100
-
-
 class TestAPIModels:
-    """Tests for audio API models."""
-
-    def test_audio_url(self):
-        """Test AudioUrl model."""
-        from vllm_mlx.api.models import AudioUrl
-
-        url = AudioUrl(url="file://test.mp3")
-        assert url.url == "file://test.mp3"
-
-    def test_content_part_audio(self):
-        """Test ContentPart with audio."""
-        from vllm_mlx.api.models import ContentPart
-
-        part = ContentPart(type="audio_url", audio_url={"url": "test.mp3"})
-        assert part.type == "audio_url"
-        # Pydantic converts dict to AudioUrl model
-        assert part.audio_url.url == "test.mp3"
-
-    def test_transcription_request(self):
-        """Test AudioTranscriptionRequest model."""
-        from vllm_mlx.api.models import AudioTranscriptionRequest
-
-        req = AudioTranscriptionRequest(
-            model="whisper-large-v3",
-            language="en",
-        )
-        assert req.model == "whisper-large-v3"
-        assert req.language == "en"
-        assert req.response_format == "json"
+    """Tests for TTS API models."""
 
     def test_speech_request(self):
         """Test AudioSpeechRequest model."""
-        from vllm_mlx.api.models import AudioSpeechRequest
+        from qwen3_tts_server.api.models import AudioSpeechRequest
 
         req = AudioSpeechRequest(
-            model="kokoro",
+            model="qwen3-tts",
             input="Hello world",
-            voice="af_heart",
+            voice="voice_clone",
             speed=1.2,
         )
-        assert req.model == "kokoro"
+        assert req.model == "qwen3-tts"
         assert req.input == "Hello world"
-        assert req.voice == "af_heart"
+        assert req.voice == "voice_clone"
         assert req.speed == 1.2
 
-    def test_transcription_response(self):
-        """Test AudioTranscriptionResponse model."""
-        from vllm_mlx.api.models import AudioTranscriptionResponse
+    def test_model_info(self):
+        """Test ModelInfo model."""
+        from qwen3_tts_server.api.models import ModelInfo
 
-        resp = AudioTranscriptionResponse(
-            text="Hello world",
-            language="en",
-            duration=2.5,
-        )
-        assert resp.text == "Hello world"
+        info = ModelInfo(id="qwen3-tts")
+        assert info.id == "qwen3-tts"
+        assert info.object == "model"
+
+    def test_models_response(self):
+        """Test ModelsResponse model."""
+        from qwen3_tts_server.api.models import ModelInfo, ModelsResponse
+
+        models = [ModelInfo(id="qwen3-tts")]
+        resp = ModelsResponse(data=models)
+        assert len(resp.data) == 1
+        assert resp.object == "list"
 
 
 class TestAudioImports:
-    """Test that all audio modules can be imported."""
+    """Test that audio modules can be imported."""
 
     def test_import_audio_module(self):
         """Test importing main audio module."""
-        from vllm_mlx.audio import (
-            STTEngine,
-            TTSEngine,
-            AudioProcessor,
-        )
+        from qwen3_tts_server.audio import TTSEngine, clone_voice, generate_speech
 
-        assert STTEngine is not None
         assert TTSEngine is not None
-        assert AudioProcessor is not None
+        assert generate_speech is not None
+        assert clone_voice is not None
 
     def test_import_api_models(self):
-        """Test importing audio API models."""
-        from vllm_mlx.api import (
-            AudioUrl,
-            AudioTranscriptionRequest,
-        )
+        """Test importing API models."""
+        from qwen3_tts_server.api import AudioSpeechRequest, ModelInfo, ModelsResponse
 
-        assert AudioUrl is not None
-        assert AudioTranscriptionRequest is not None
+        assert AudioSpeechRequest is not None
+        assert ModelInfo is not None
+        assert ModelsResponse is not None
 
 
 # Integration tests (require mlx-audio installed)
 @pytest.mark.skip(reason="Requires mlx-audio and models downloaded")
 class TestAudioIntegration:
-    """Integration tests for audio (require models)."""
+    """Integration tests for TTS (require models)."""
 
-    def test_whisper_transcription(self):
-        """Test Whisper transcription."""
-        from vllm_mlx.audio import transcribe_audio
-
-        result = transcribe_audio(
-            "test_audio.wav",
-            model_name="mlx-community/whisper-small-mlx",
-        )
-        assert result.text is not None
-
-    def test_kokoro_tts(self):
-        """Test Kokoro TTS generation."""
-        from vllm_mlx.audio import generate_speech
+    def test_qwen3_tts(self):
+        """Test Qwen3-TTS generation."""
+        from qwen3_tts_server.audio import generate_speech
 
         audio = generate_speech(
             "Hello world",
-            model_name="mlx-community/Kokoro-82M-bf16",
-            voice="af_heart",
+            model_name="mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16",
         )
         assert audio.audio is not None
         assert audio.sample_rate > 0
 
-    def test_sam_audio_separation(self):
-        """Test SAM-Audio voice separation."""
-        from vllm_mlx.audio import separate_voice
+    def test_qwen3_tts_voice_clone(self):
+        """Test Qwen3-TTS voice cloning."""
+        from qwen3_tts_server.audio import clone_voice
 
-        target, residual = separate_voice(
-            "test_audio.wav",
-            model_name="mlx-community/sam-audio-small",
+        audio = clone_voice(
+            "Hello world",
+            ref_audio="/path/to/reference.wav",
         )
-        assert target is not None
-        assert residual is not None
+        assert audio.audio is not None
+        assert audio.sample_rate > 0
 
 
 if __name__ == "__main__":

@@ -10,12 +10,17 @@ vllm-mlx is an Apple Silicon GPU-accelerated inference engine that provides a vL
 
 ### Development Setup
 
+**Python Version:** 3.11+ (required for `str | None` union syntax)
+
 ```bash
 # Install in development mode with all dev dependencies
 pip install -e ".[dev]"
 
 # Install with optional audio support
 pip install -e ".[audio]"
+
+# Full development setup with all optional dependencies
+pip install -e ".[dev,audio]"
 ```
 
 ### Running Tests
@@ -27,6 +32,9 @@ pytest
 # Run a specific test file
 pytest tests/test_paged_cache.py -v
 
+# Run a single test function
+pytest tests/test_paged_cache.py::test_cache_initialization -v
+
 # Run slow tests (requires model loading)
 pytest -m slow
 
@@ -35,6 +43,9 @@ pytest -m integration
 
 # Run with coverage
 pytest --cov=vllm_mlx tests/
+
+# Run with verbose output and fail fast
+pytest -xvs tests/test_paged_cache.py
 ```
 
 ### Code Quality
@@ -71,6 +82,10 @@ vllm-mlx serve mlx-community/Qwen3-8B-4bit --reasoning-parser qwen3
 
 # With embeddings endpoint
 vllm-mlx serve mlx-community/Llama-3.2-3B-Instruct-4bit --embedding-model mlx-community/all-MiniLM-L6-v2-4bit
+
+# With TTS and default reference audio for voice cloning
+vllm-mlx serve mlx-community/Llama-3.2-3B-Instruct-4bit --port 8000 \
+  --default-ref-audio /path/to/default_voice.wav
 ```
 
 ### Benchmarking
@@ -133,10 +148,13 @@ vllm-mlx-bench --model mlx-community/Qwen3-0.6B-8bit
 **Tool Parsers** (`vllm_mlx/tool_parsers/`)
 - Model-specific tool call parsers (mistral, qwen, llama, hermes, deepseek, etc.)
 - `ToolParserManager` for auto-detection based on model name
+- Use `--enable-auto-tool-choice --tool-call-parser <parser>` to enable
 
 **Reasoning Parsers** (`vllm_mlx/reasoning/`)
 - Extract thinking content from reasoning models (Qwen3, DeepSeek-R1, GPT-OSS)
 - Separates reasoning from final answer in response
+- `qwen3` parser: Requires both `<think>` and `</think>` tags
+- `deepseek_r1` parser: Handles implicit `<think>` tag
 
 **MCP Support** (`vllm_mlx/mcp/`)
 - Model Context Protocol client and executor

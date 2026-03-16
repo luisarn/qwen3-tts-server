@@ -2,12 +2,12 @@
 """
 TTS API Client Example
 
-Demonstrates using the vllm-mlx server's /v1/audio/speech endpoint
+Demonstrates using the qwen3-tts-server's /v1/audio/speech endpoint
 with voice cloning via Qwen3-TTS.
 
 Usage:
     # Start the server first:
-    vllm-mlx serve <model> --port 8000
+    qwen3-tts-server serve --port 8000
 
     # Standard TTS (Kokoro):
     python tts_api_client.py "Hello world!" --output output.wav

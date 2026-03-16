@@ -97,4 +97,13 @@ temp/
 .mlx_cache/
 
 # Data files (reference audio, etc.)
-#data/
+data/
+
+# Audio files (generated or user-provided)
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+# But keep the default reference audio for the server
+!data/reference_audio/default_voice.wav

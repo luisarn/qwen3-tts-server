@@ -74,10 +74,10 @@ Examples:
         sys.exit(1)
 
     try:
-        from vllm_mlx.audio import TTSEngine
+        from qwen3_tts_server.audio import TTSEngine
     except ImportError as e:
         print(f"Error: {e}")
-        print("Please install vllm-mlx with audio support:")
+        print("Please install qwen3-tts-server with audio support:")
         print("  pip install mlx-audio")
         sys.exit(1)
 
