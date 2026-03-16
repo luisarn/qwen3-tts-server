@@ -21,37 +21,14 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def _patch_qwen3_tokenizer_loading():
-    """
-    Monkey-patch to fix Qwen3-TTS tokenizer regex warning.
-    The mlx-audio library doesn't pass fix_mistral_regex=True when loading
-    the tokenizer, which causes incorrect tokenization for Qwen3-TTS models.
-    """
-    try:
-        from transformers.models.auto.tokenization_auto import AutoTokenizer
-
-        # Store the original class method
-        _original_from_pretrained = AutoTokenizer.from_pretrained
-
-        @classmethod
-        def _patched_from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
-            # Add fix_mistral_regex=True for Qwen3-TTS models
-            model_path = str(pretrained_model_name_or_path).lower()
-            if "qwen3" in model_path and "tts" in model_path:
-                if "fix_mistral_regex" not in kwargs:
-                    kwargs["fix_mistral_regex"] = True
-                    logger.debug(f"Applying fix_mistral_regex=True for {pretrained_model_name_or_path}")
-            return _original_from_pretrained.__func__(cls, pretrained_model_name_or_path, *args, **kwargs)
-
-        # Replace the class method
-        AutoTokenizer.from_pretrained = _patched_from_pretrained
-        logger.debug("Patched AutoTokenizer.from_pretrained for Qwen3-TTS")
-    except Exception as e:
-        logger.debug(f"Could not patch tokenizer loading: {e}")
-
-
-# Apply the patch on module import
-_patch_qwen3_tokenizer_loading()
+# Suppress the tokenizer regex warning for Qwen3-TTS models
+# The mlx-audio library handles this internally
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message=".*incorrect regex pattern.*fix_mistral_regex.*",
+    category=UserWarning,
+)
 
 # Default models
 DEFAULT_TTS_MODEL = "mlx-community/Kokoro-82M-bf16"
