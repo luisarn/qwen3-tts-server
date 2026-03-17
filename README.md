@@ -161,8 +161,43 @@ engine.save(audio, "output.wav")
 
 **Additional Parameters:**
 - `ref_audio` (file): Reference audio for voice cloning (optional if server has `--default-ref-audio` configured)
+- `lang_code` (string): Language code for multilingual support (default: `yue` for Cantonese):
+  - `yue` - Cantonese/廣東話 (default)
+  - `zh` - Mandarin Chinese
+  - `en` - English
+  - `auto` - Auto-detect from text
+  - And more...
 
 **Response:** Audio file (WAV format)
+
+#### Language Examples
+
+**Cantonese (廣東話) - Default:**
+```bash
+# Cantonese is the default - no lang_code needed
+curl -X POST http://localhost:8000/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3-tts", "input": "你好，廣東話真係好正！", "voice": "voice_clone"}' \
+  --output cantonese.wav
+```
+
+**English:**
+```bash
+# Specify lang_code=en for English
+curl -X POST http://localhost:8000/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3-tts", "input": "Hello world!", "voice": "voice_clone", "lang_code": "en"}' \
+  --output english.wav
+```
+
+**Mandarin Chinese:**
+```bash
+# Specify lang_code=zh for Mandarin
+curl -X POST http://localhost:8000/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3-tts", "input": "你好，世界！", "voice": "voice_clone", "lang_code": "zh"}' \
+  --output mandarin.wav
+```
 
 ## Model
 

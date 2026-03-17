@@ -105,8 +105,10 @@ async def create_speech(
     request: Request,
     model: str = Form("qwen3-tts"),
     input: str = Form(""),
+    voice: str = Form("voice_clone"),
     speed: float = Form(1.0),
     response_format: str = Form("wav"),
+    lang_code: str = Form("yue"),
     ref_audio: UploadFile | None = File(None),
 ):
     """
@@ -133,11 +135,13 @@ async def create_speech(
             input_text = body.get("input", "")
             speed_val = body.get("speed", 1.0)
             response_fmt = body.get("response_format", "wav")
+            lang_val = body.get("lang_code", "yue")
         else:
             # Form data - use the parameters directly
             input_text = input
             speed_val = speed
             response_fmt = response_format
+            lang_val = lang_code
 
         # Initialize engine if not already loaded
         if _tts_engine is None:
@@ -179,7 +183,7 @@ async def create_speech(
         try:
             # Generate speech with voice cloning
             audio = _tts_engine.generate(
-                input_text, ref_audio=ref_audio_path, speed=speed_val
+                input_text, ref_audio=ref_audio_path, speed=speed_val, lang_code=lang_val
             )
             audio_bytes = _tts_engine.to_bytes(audio, format=response_fmt)
         finally:

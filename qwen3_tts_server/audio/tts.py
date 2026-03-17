@@ -84,6 +84,7 @@ class TTSEngine:
         text: str,
         ref_audio: Union[str, np.ndarray, None] = None,
         speed: float = 1.0,
+        lang_code: str = "yue",
     ) -> AudioOutput:
         """
         Generate speech from text.
@@ -92,6 +93,7 @@ class TTSEngine:
             text: Text to synthesize
             ref_audio: Reference audio for voice cloning (required)
             speed: Speech speed (0.5 to 2.0)
+            lang_code: Language code (yue, zh, en, auto, etc. Default: yue for Cantonese)
 
         Returns:
             AudioOutput with audio data and metadata
@@ -118,6 +120,7 @@ class TTSEngine:
                 text=text,
                 ref_audio=ref_audio,
                 speed=speed,
+                lang_code=lang_code,
             ):
                 audio_data = result.audio
                 if hasattr(result, "sample_rate"):
