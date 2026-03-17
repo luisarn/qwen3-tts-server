@@ -4,7 +4,7 @@ Pydantic models for OpenAI-compatible TTS API.
 """
 
 import time
-import uuid
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -20,7 +20,8 @@ class ModelInfo(BaseModel):
     id: str
     object: str = "model"
     created: int = Field(default_factory=lambda: int(time.time()))
-    owned_by: str = "vllm-mlx"
+    owned_by: str = "qwen3-tts-server"
+    description: Optional[str] = None
 
 
 class ModelsResponse(BaseModel):

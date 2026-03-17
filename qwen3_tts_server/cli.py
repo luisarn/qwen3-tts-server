@@ -37,6 +37,7 @@ def serve_command(args):
     print("=" * 60)
     print("Qwen3-TTS Server Configuration")
     print("=" * 60)
+    print(f"  Model: {server.DEFAULT_TTS_MODEL}")
     if args.api_key:
         print("  Authentication: ENABLED (API key required)")
     else:

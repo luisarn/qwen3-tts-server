@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """
-Tests for TTS support.
+Tests for Qwen3-TTS support.
 
 Note: Some tests require mlx-audio to be installed.
 """
@@ -12,62 +12,20 @@ import pytest
 class TestTTSEngine:
     """Tests for Text-to-Speech engine."""
 
-    def test_init_kokoro(self):
-        """Test TTS engine initialization with Kokoro."""
-        from qwen3_tts_server.audio.tts import TTSEngine
+    def test_init_default_model(self):
+        """Test TTS engine initialization with default Qwen3-TTS model."""
+        from qwen3_tts_server.audio.tts import TTSEngine, DEFAULT_TTS_MODEL
 
-        engine = TTSEngine("mlx-community/Kokoro-82M-bf16")
-        assert engine.model_name == "mlx-community/Kokoro-82M-bf16"
-        assert engine._model_family == "kokoro"
+        engine = TTSEngine()
+        assert engine.model_name == DEFAULT_TTS_MODEL
         assert engine._loaded is False
 
-    def test_init_chatterbox(self):
-        """Test TTS engine initialization with Chatterbox."""
-        from qwen3_tts_server.audio.tts import TTSEngine
-
-        engine = TTSEngine("mlx-community/chatterbox-turbo-fp16")
-        assert engine._model_family == "chatterbox"
-
-    def test_init_vibevoice(self):
-        """Test TTS engine initialization with VibeVoice."""
-        from qwen3_tts_server.audio.tts import TTSEngine
-
-        engine = TTSEngine("mlx-community/VibeVoice-Realtime-0.5B-4bit")
-        assert engine._model_family == "vibevoice"
-
-    def test_init_voxcpm(self):
-        """Test TTS engine initialization with VoxCPM."""
-        from qwen3_tts_server.audio.tts import TTSEngine
-
-        engine = TTSEngine("mlx-community/VoxCPM1.5")
-        assert engine._model_family == "voxcpm"
-
-    def test_init_qwen3_tts(self):
-        """Test TTS engine initialization with Qwen3-TTS."""
+    def test_init_custom_model(self):
+        """Test TTS engine initialization with custom model."""
         from qwen3_tts_server.audio.tts import TTSEngine
 
         engine = TTSEngine("mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16")
-        assert engine._model_family == "qwen3_tts"
-
-    def test_available_voices(self):
-        """Test voice lists."""
-        from qwen3_tts_server.audio.tts import CHATTERBOX_VOICES, KOKORO_VOICES
-
-        assert "af_heart" in KOKORO_VOICES
-        assert len(KOKORO_VOICES) > 5
-        assert "default" in CHATTERBOX_VOICES
-
-    def test_get_voices(self):
-        """Test get_voices method."""
-        from qwen3_tts_server.audio.tts import TTSEngine
-
-        kokoro = TTSEngine("mlx-community/Kokoro-82M-bf16")
-        voices = kokoro.get_voices()
-        assert "af_heart" in voices
-
-        qwen3 = TTSEngine("mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16")
-        qwen3_voices = qwen3.get_voices()
-        assert "voice_clone" in qwen3_voices
+        assert engine.model_name == "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16"
 
     def test_audio_output(self):
         """Test AudioOutput dataclass."""
@@ -151,7 +109,7 @@ class TestAudioIntegration:
 
         audio = generate_speech(
             "Hello world",
-            model_name="mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16",
+            ref_audio="/path/to/reference.wav",
         )
         assert audio.audio is not None
         assert audio.sample_rate > 0

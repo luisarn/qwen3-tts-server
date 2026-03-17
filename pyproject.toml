@@ -43,9 +43,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/vllm-mlx/qwen3-tts-server"
-Documentation = "https://github.com/vllm-mlx/qwen3-tts-server#readme"
-Repository = "https://github.com/vllm-mlx/qwen3-tts-server"
+Homepage = "https://github.com/linguist/qwen3-tts-server"
+Documentation = "https://github.com/linguist/qwen3-tts-server#readme"
+Repository = "https://github.com/linguist/qwen3-tts-server"
 
 [project.scripts]
 qwen3-tts-server = "qwen3_tts_server.cli:main"

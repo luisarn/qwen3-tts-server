@@ -8,12 +8,11 @@
 
 ## Overview
 
-A stripped-down TTS server focused on **Qwen3-TTS voice cloning** using Apple's MLX framework. This is a minimal implementation that removes all LLM/MLLM/embedding functionality from the original vllm-mlx project, keeping only the TTS capabilities.
+A focused TTS server for **Qwen3-TTS voice cloning** using Apple's MLX framework.
 
 **Features:**
 - OpenAI-compatible `/v1/audio/speech` API
-- Voice cloning with Qwen3-TTS and Chatterbox
-- Multiple TTS models: Kokoro, VibeVoice, VoxCPM, CSM, CosyVoice
+- Voice cloning with Qwen3-TTS
 - Default reference audio support for consistent voice output
 - GPU acceleration on Apple Silicon (M1, M2, M3, M4)
 
@@ -25,7 +24,7 @@ This project uses [uv](https://docs.astral.sh/uv/) for fast, reliable Python pac
 
 ```bash
 # Clone the repository
-git clone https://github.com/vllm-mlx/qwen3-tts-server.git
+git clone https://github.com/linguist/qwen3-tts-server.git
 cd qwen3-tts-server
 
 # Install uv (if not already installed)
@@ -45,15 +44,15 @@ uv sync --extra dev
 pip install -e .
 
 # Or install with pip
-pip install git+https://github.com/vllm-mlx/qwen3-tts-server.git
+pip install git+https://github.com/linguist/qwen3-tts-server.git
 ```
 
 ## Quick Start
 
-### Start the Server
+### Start the Server with uv
 
 ```bash
-# Basic usage (downloads Qwen3-TTS on first run)
+# Basic usage (downloads Qwen3-TTS model on first run)
 uv run -m qwen3_tts_server.server --port 8000
 
 # With default reference audio for voice cloning
@@ -63,19 +62,38 @@ uv run -m qwen3_tts_server.server --port 8000 --default-ref-audio /path/to/voice
 uv run -m qwen3_tts_server.server --port 8000 --api-key your-secret-key
 ```
 
-Or if installed with pip:
+Or using the CLI:
 
 ```bash
-qwen3-tts-server serve --port 8000
+uv run qwen3-tts-server serve --port 8000
 ```
 
-### Generate Speech
+### Generate Speech via OpenAI-Compatible API
 
+**Endpoint:** `POST /v1/audio/speech`
+
+**Parameters:**
+- `model` (string): `qwen3-tts` (required)
+- `input` (string): Text to synthesize (required)
+- `voice` (string): `voice_clone` (required for OpenAI compatibility)
+- `speed` (float): Speech speed 0.5-2.0 (default: 1.0)
+- `response_format` (string): `wav` (default)
+
+**Using curl with JSON (OpenAI format):**
 ```bash
-# Using curl with reference audio for voice cloning
+curl -X POST http://localhost:8000/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3-tts", "input": "Hello world!", "voice": "voice_clone"}' \
+  --output output.wav
+```
+
+**Using curl with form-data:**
+```bash
+# With reference audio for voice cloning
 curl -X POST http://localhost:8000/v1/audio/speech \
   -F "model=qwen3-tts" \
   -F "input=Hello, this is a voice cloning test!" \
+  -F "voice=voice_clone" \
   -F "ref_audio=@/path/to/reference_voice.wav" \
   --output output.wav
 
@@ -83,7 +101,26 @@ curl -X POST http://localhost:8000/v1/audio/speech \
 curl -X POST http://localhost:8000/v1/audio/speech \
   -F "model=qwen3-tts" \
   -F "input=Hello world!" \
+  -F "voice=voice_clone" \
   --output output.wav
+```
+
+**Using OpenAI Python Client:**
+```python
+import openai
+
+client = openai.OpenAI(
+    base_url='http://localhost:8000/v1',
+    api_key='dummy-key'  # Not required unless server has --api-key
+)
+
+response = client.audio.speech.create(
+    model='qwen3-tts',
+    input='Hello from the OpenAI client!',
+    voice='voice_clone',
+    speed=1.0
+)
+response.stream_to_file('output.wav')
 ```
 
 ### Using Python
@@ -109,43 +146,36 @@ engine.save(audio, "output.wav")
 | `/health` | GET | Health check |
 | `/v1/models` | GET | List available models |
 | `/v1/audio/speech` | POST | Generate speech from text |
-| `/v1/audio/voices` | GET | List available voices for a model |
-
-**Model aliases:** The API accepts `qwen3-tts` as an alias for the full model name `mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16`.
+| `/v1/audio/voices` | GET | List available voices |
 
 ### POST /v1/audio/speech
 
-**Parameters:**
-- `model` (string): Model ID - `qwen3-tts` (default)
-- `input` (string): Text to synthesize
-- `voice` (string): Voice ID - `voice_clone` for Qwen3-TTS, or see Kokoro voices below
+**Endpoint:** `/v1/audio/speech`
+
+**OpenAI-Compatible Parameters:**
+- `model` (string): **Must be `qwen3-tts`**
+- `input` (string): Text to synthesize (required)
+- `voice` (string): **Must be `voice_clone`** (required for OpenAI compatibility)
 - `speed` (float): Speech speed - 0.5 to 2.0 (default: 1.0)
 - `response_format` (string): Output format - `wav` (default)
-- `ref_audio` (file): Reference audio for voice cloning (optional, required for voice cloning models if no default is set)
 
-**Kokoro Voices:**
-- American Female: `af_heart`, `af_bella`, `af_nicole`, `af_sarah`, `af_sky`
-- American Male: `am_adam`, `am_michael`
-- British Female: `bf_emma`, `bf_isabella`
-- British Male: `bm_george`, `bm_lewis`
+**Additional Parameters:**
+- `ref_audio` (file): Reference audio for voice cloning (optional if server has `--default-ref-audio` configured)
 
-## Supported Models
+**Response:** Audio file (WAV format)
 
-| Model | Description | Voice Cloning | Default Model ID |
-|-------|-------------|---------------|------------------|
-| Qwen3-TTS | Multilingual voice cloning | Yes | `mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16` |
-| Kokoro | Fast, lightweight, multiple voices | No | `mlx-community/Kokoro-82M-bf16` |
-| Chatterbox | Expressive, multilingual | Yes | `mlx-community/chatterbox-turbo-fp16` |
-| VibeVoice | Realtime, low latency | No | `mlx-community/VibeVoice-Realtime-0.5B-4bit` |
-| VoxCPM | Chinese/English, high quality | No | `mlx-community/VoxCPM1.5` |
-| CSM | Conversational speech model | No | See mlx-audio docs |
-| CosyVoice | Multilingual, expressive | No | See mlx-audio docs |
+## Model
+
+**Qwen3-TTS**: Multilingual voice cloning model
+- Model ID: `mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16`
+- Voice cloning: Yes (requires reference audio)
+- Supports voice cloning from reference audio files
 
 ## Project Structure
 
 ```
 qwen3-tts-server/
-├── pyproject.toml          # Minimal TTS dependencies
+├── pyproject.toml          # Project dependencies
 ├── qwen3_tts_server/
 │   ├── __init__.py         # TTS exports
 │   ├── server.py           # FastAPI TTS server
@@ -168,6 +198,9 @@ qwen3-tts-server/
 Common `uv` commands:
 
 ```bash
+# Start the server
+uv run -m qwen3_tts_server.server --port 8000
+
 # Run tests
 uv run --extra dev pytest
 
@@ -201,4 +234,3 @@ Apache 2.0 - see [LICENSE](LICENSE) for details.
 
 - [MLX](https://github.com/ml-explore/mlx) - Apple's ML framework
 - [mlx-audio](https://github.com/Blaizzy/mlx-audio) - Text-to-Speech models
-- Original [vllm-mlx](https://github.com/waybarrios/vllm-mlx) project

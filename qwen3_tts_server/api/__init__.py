@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """
-API models for vllm-mlx TTS server.
+API models for Qwen3-TTS server.
 
 This module provides Pydantic models for the OpenAI-compatible TTS API.
 """

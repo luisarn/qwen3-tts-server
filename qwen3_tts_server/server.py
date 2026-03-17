@@ -9,7 +9,7 @@ Usage:
     python -m qwen3_tts_server.server --port 8000 --default-ref-audio /path/to/voice.wav
 
 The server provides:
-    - POST /v1/audio/speech - Text-to-Speech (TTS with voice cloning support)
+    - POST /v1/audio/speech - Text-to-Speech with voice cloning support
     - GET /v1/audio/voices - List available TTS voices
     - GET /v1/models - List available models
     - GET /health - Health check
@@ -37,9 +37,9 @@ logger = logging.getLogger(__name__)
 # Global state
 _api_key: str | None = None
 _default_ref_audio: str | None = None
-_tts_engines: dict[str, Any] = {}
+_tts_engine: Any | None = None
 
-# Default TTS model
+# Default Qwen3-TTS model
 DEFAULT_TTS_MODEL = "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16"
 
 # Bundled default reference audio path
@@ -67,16 +67,17 @@ async def lifespan(app: FastAPI):
     yield
     # Cleanup
     logger.info("Shutting down Qwen3-TTS server")
-    for engine in _tts_engines.values():
+    global _tts_engine
+    if _tts_engine is not None:
         try:
-            engine.unload()
+            _tts_engine.unload()
         except Exception:
             pass
 
 
 app = FastAPI(
     title="Qwen3-TTS Server",
-    description="OpenAI-compatible TTS API for Apple Silicon",
+    description="OpenAI-compatible TTS API for Apple Silicon with voice cloning",
     version="0.2.6",
     lifespan=lifespan,
 )
@@ -94,16 +95,16 @@ async def list_models():
     from .api.models import ModelInfo, ModelsResponse
 
     models = [
-        ModelInfo(id="qwen3-tts"),
+        ModelInfo(id="qwen3-tts", description="Multilingual voice cloning"),
     ]
     return ModelsResponse(data=models)
 
 
 @app.post("/v1/audio/speech", dependencies=[Depends(verify_api_key)])
 async def create_speech(
+    request: Request,
     model: str = Form("qwen3-tts"),
     input: str = Form(""),
-    voice: str = Form("voice_clone"),
     speed: float = Form(1.0),
     response_format: str = Form("wav"),
     ref_audio: UploadFile | None = File(None),
@@ -116,27 +117,33 @@ async def create_speech(
     1. The --default-ref-audio file specified at startup
     2. The bundled default_voice.wav from data/reference_audio/
 
-    Model aliases:
-    - qwen3-tts -> mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16
+    Supports both multipart/form-data (for file uploads) and JSON requests.
     """
-    global _tts_engines
+    global _tts_engine
 
     try:
         from .audio.tts import TTSEngine
 
-        # Map model aliases to full names
-        model_map = {
-            "qwen3-tts": DEFAULT_TTS_MODEL,
-        }
-        model_name = model_map.get(model, model)
+        # Check content type to handle JSON vs form-data
+        content_type = request.headers.get("content-type", "").lower()
+        
+        # Handle JSON requests (OpenAI client sends JSON)
+        if "application/json" in content_type:
+            body = await request.json()
+            input_text = body.get("input", "")
+            speed_val = body.get("speed", 1.0)
+            response_fmt = body.get("response_format", "wav")
+        else:
+            # Form data - use the parameters directly
+            input_text = input
+            speed_val = speed
+            response_fmt = response_format
 
-        # Get or create engine for this model
-        engine = _tts_engines.get(model_name)
-        if engine is None:
-            logger.info(f"Loading TTS model: {model_name}")
-            engine = TTSEngine(model_name)
-            engine.load()
-            _tts_engines[model_name] = engine
+        # Initialize engine if not already loaded
+        if _tts_engine is None:
+            logger.info(f"Loading TTS model: {DEFAULT_TTS_MODEL}")
+            _tts_engine = TTSEngine(DEFAULT_TTS_MODEL)
+            _tts_engine.load()
 
         # Handle reference audio for voice cloning
         ref_audio_path = None
@@ -163,41 +170,45 @@ async def create_speech(
             ref_audio_path = str(_BUNDLED_REF_AUDIO)
             logger.debug(f"Using bundled reference audio: {ref_audio_path}")
 
-        try:
-            # Generate speech with optional voice cloning
-            audio = engine.generate(
-                input, voice=voice, speed=speed, ref_audio=ref_audio_path
+        if ref_audio_path is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Reference audio required. Provide ref_audio in request, start server with --default-ref-audio, or ensure bundled default_voice.wav exists."
             )
-            audio_bytes = engine.to_bytes(audio, format=response_format)
+
+        try:
+            # Generate speech with voice cloning
+            audio = _tts_engine.generate(
+                input_text, ref_audio=ref_audio_path, speed=speed_val
+            )
+            audio_bytes = _tts_engine.to_bytes(audio, format=response_fmt)
         finally:
             # Clean up temp file only if we created one
             if temp_file_created and ref_audio_path and os.path.exists(ref_audio_path):
                 os.unlink(ref_audio_path)
 
-        content_type = (
-            "audio/wav" if response_format == "wav" else f"audio/{response_format}"
+        content_type_header = (
+            "audio/wav" if response_fmt == "wav" else f"audio/{response_fmt}"
         )
-        return Response(content=audio_bytes, media_type=content_type)
+        return Response(content=audio_bytes, media_type=content_type_header)
 
     except ImportError as e:
         logger.error(f"mlx-audio not installed: {e}")
         raise HTTPException(
             status_code=503,
             detail="mlx-audio not installed. Install with: pip install mlx-audio",
-        )
+        ) from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"TTS generation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/v1/audio/voices", dependencies=[Depends(verify_api_key)])
-async def list_voices(model: str = "qwen3-tts"):
-    """List available voices for a TTS model."""
-    model_lower = model.lower()
-    if "qwen3" in model_lower and "tts" in model_lower:
-        return {"voices": ["voice_clone"], "requires_ref_audio": True}
-    else:
-        return {"voices": ["default"]}
+async def list_voices():
+    """List available voices for Qwen3-TTS."""
+    return {"voices": ["voice_clone"], "requires_ref_audio": True}
 
 
 def main():
@@ -248,6 +259,7 @@ def main():
         print(f"Default reference audio set: {_default_ref_audio}")
 
     print(f"Starting Qwen3-TTS server at http://{args.host}:{args.port}")
+    print(f"\nModel: {DEFAULT_TTS_MODEL}")
     print("\nEndpoints:")
     print(f"  - POST http://{args.host}:{args.port}/v1/audio/speech")
     print(f"  - GET  http://{args.host}:{args.port}/v1/audio/voices")

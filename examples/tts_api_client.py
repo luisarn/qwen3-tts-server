@@ -9,12 +9,8 @@ Usage:
     # Start the server first:
     qwen3-tts-server serve --port 8000
 
-    # Standard TTS (Kokoro):
-    python tts_api_client.py "Hello world!" --output output.wav
-
-    # Voice cloning with Qwen3-TTS:
+    # Voice cloning with reference audio:
     python tts_api_client.py "Hello world!" \
-        --model qwen3-tts \
         --ref-audio my_voice.wav \
         --output cloned.wav
 
@@ -31,16 +27,12 @@ import requests
 
 def main():
     parser = argparse.ArgumentParser(
-        description="TTS API Client",
+        description="TTS API Client for Qwen3-TTS",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Standard TTS
-  python tts_api_client.py "Hello world!" --output output.wav
-
-  # Voice cloning
-  python tts_api_client.py "Hello world!" --model qwen3-tts \\
-      --ref-audio my_voice.wav --output cloned.wav
+  # Voice cloning with reference audio
+  python tts_api_client.py "Hello world!" --ref-audio my_voice.wav --output cloned.wav
 
   # List available voices
   python tts_api_client.py --list-voices
@@ -49,12 +41,6 @@ Examples:
     parser.add_argument("text", nargs="?", help="Text to synthesize")
     parser.add_argument(
         "--server", default="http://localhost:8000", help="Server URL"
-    )
-    parser.add_argument(
-        "--model", default="kokoro", help="TTS model (kokoro, qwen3-tts, etc.)"
-    )
-    parser.add_argument(
-        "--voice", default="af_heart", help="Voice ID (for non-cloning models)"
     )
     parser.add_argument(
         "--ref-audio", help="Reference audio file for voice cloning"
@@ -71,7 +57,7 @@ Examples:
     parser.add_argument(
         "--list-voices",
         action="store_true",
-        help="List available voices for the model",
+        help="List available voices",
     )
 
     args = parser.parse_args()
@@ -79,16 +65,15 @@ Examples:
     # List voices mode
     if args.list_voices:
         url = f"{args.server}/v1/audio/voices"
-        params = {"model": args.model}
         headers = {}
         if args.api_key:
             headers["Authorization"] = f"Bearer {args.api_key}"
 
         try:
-            response = requests.get(url, params=params, headers=headers)
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
             data = response.json()
-            print(f"Available voices for {args.model}:")
+            print("Available voices for Qwen3-TTS:")
             for voice in data.get("voices", []):
                 print(f"  - {voice}")
             if data.get("requires_ref_audio"):
@@ -111,9 +96,8 @@ Examples:
         headers["Authorization"] = f"Bearer {args.api_key}"
 
     data = {
-        "model": args.model,
+        "model": "qwen3-tts",
         "input": args.text,
-        "voice": args.voice,
         "speed": args.speed,
         "response_format": "wav",
     }
@@ -131,7 +115,6 @@ Examples:
 
     try:
         print(f"Server: {args.server}")
-        print(f"Model: {args.model}")
         print(f"Text: '{args.text}'")
         if args.ref_audio:
             print(f"Reference audio: {args.ref_audio}")

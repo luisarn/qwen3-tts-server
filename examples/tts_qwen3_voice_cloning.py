@@ -91,7 +91,6 @@ Examples:
         engine = TTSEngine(model_name=args.model)
         engine.load()
 
-        print(f"Model family: {engine._model_family}")
         print("Generating speech...")
 
         # Generate speech with voice cloning

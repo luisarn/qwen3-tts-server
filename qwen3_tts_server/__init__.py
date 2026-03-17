@@ -7,8 +7,7 @@ using Apple's MLX framework and mlx-audio.
 
 Features:
 - OpenAI-compatible /v1/audio/speech API
-- Voice cloning with Qwen3-TTS and Chatterbox
-- Multiple TTS models: Kokoro, VibeVoice, VoxCPM, CSM, CosyVoice
+- Voice cloning with Qwen3-TTS
 - Default reference audio support
 """
 
